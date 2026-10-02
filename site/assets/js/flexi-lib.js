@@ -1887,6 +1887,8 @@
 
 			// Checkbox mode: keep dropdown open, toggle values on click
 			if (isCheckbox) {
+			// Closure per element: 'el' and 'choicesInstance' are function-scoped vars of the loop, handlers must not see the last loop element
+			(function(el, choicesInstance) {
 				var dropdownEl = choicesInstance.dropdown && choicesInstance.dropdown.element;
 				if (dropdownEl) {
 					var observer = new MutationObserver(function(mutations) {
@@ -1908,12 +1910,15 @@
 				sbox.addEventListener('click', function(e) {
 					var item = e.target && e.target.closest ? e.target.closest('.fc-choices-checkbox-item') : null;
 					if (!item) return;
+					// Only handle clicks of this select's own dropdown (sbox contains several selects)
+					var ownDropdown = choicesInstance.dropdown && choicesInstance.dropdown.element;
+					if (ownDropdown && !ownDropdown.contains(item)) return;
 					var checkbox = item.querySelector('.fc-choices-checkbox');
 					if (!checkbox) return;
 					var value = checkbox.getAttribute('data-value');
 					var isChecked = checkbox.checked;
 					var vals = fcGetSelectValues(el);
-					vals = vals.map(String);
+					vals = (Array.isArray(vals) ? vals : (vals ? [vals] : [])).map(String);
 					if (isChecked && vals.indexOf(value) === -1) vals.push(value);
 					else if (!isChecked) vals = vals.filter(function(v) { return v !== value; });
 					// Update the underlying select (form submission + external listeners)
@@ -1926,6 +1931,7 @@
 					el._fc_keep_open = true;
 					setTimeout(function() { el._fc_keep_open = false; }, 100);
 				});
+			})(el, choicesInstance);
 			}
 
 			// Highlight active value for single selects

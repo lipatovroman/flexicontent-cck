@@ -1628,7 +1628,9 @@ class flexicontent_html
 					$document->addScript($framework_path.'/choices.min.js', array('version' => $ver));
 					$document->addScript($framework_path.'/sortable.min.js', array('version' => $ver));
 					$document->addStyleSheet($framework_path.'/choices.min.css', array('version' => $ver));
-					$document->addStyleSheet($css_path.'/flexi_choices.css', array('version' => '1.4'));
+					// Version by file date, a constant version made browsers / caches keep serving a stale stylesheet after updates
+					$choices_css_ver = @filemtime(JPATH_SITE . '/components/com_flexicontent/assets/css/flexi_choices.css') ?: '1.4';
+					$document->addStyleSheet($css_path.'/flexi_choices.css', array('version' => $choices_css_ver));
 
 					// Attach Choices.js JS but skip it in mobiles and use native selects instead
 					$js .= "

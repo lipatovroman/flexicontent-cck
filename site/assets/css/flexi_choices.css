@@ -154,18 +154,25 @@ html[dir="rtl"] .choices .choices__inner {
 }
 
 .choices .choices__list--multiple .choices__button {
-	background-image: url('../images/select2.png') !important;
-	background-position: right -22px !important;
+	/* Choices.js v11 renders the remove button without text, so it needs an explicit size (width:auto collapsed it to 0) */
+	display: inline-block !important;
+	vertical-align: middle !important;
+	width: 14px !important;
+	height: 14px !important;
+	min-width: 14px !important;
+	min-height: 14px !important;
+	background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23777777' d='M1.4 0L0 1.4l2.6 2.6L0 6.6 1.4 8 4 5.4 6.6 8 8 6.6 5.4 4 8 1.4 6.6 0 4 2.6z'/%3E%3C/svg%3E") !important;
+	background-position: center !important;
 	background-repeat: no-repeat !important;
+	background-size: 8px 8px !important;
 	text-indent: 0 !important;
-	padding: 0 2px 0 2px !important;
-	margin: -1px 0 0 0 !important;
+	padding: 0 !important;
+	margin: -1px 0 0 4px !important;
 	font-size: 0 !important;
-	width: auto !important;
-	height: auto !important;
 	border: 0 !important;
 	background-color: transparent !important;
 	color: #999 !important;
+	cursor: pointer !important;
 }
 
 .choices .choices__list--multiple .choices__button:hover {
