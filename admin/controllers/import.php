@@ -198,6 +198,7 @@ class FlexicontentControllerImport extends FlexicontentControllerBaseAdmin
 
 				// Tags
 				$conf['tags_col'] = $jinput->get('tags_col', 0, 'int');
+				$conf['tags_ids'] = array_values(array_filter(ArrayHelper::toInteger($jinput->get('tags_ids', array(), 'array'))));
 
 				// Publication: META data
 				$conf['created_by_col'] = $jinput->get('created_by_col', 0, 'int');
@@ -566,6 +567,18 @@ class FlexicontentControllerImport extends FlexicontentControllerBaseAdmin
 					$tags_model	= $this->getModel('tags');
 				}
 
+				// Tags selected in the import form (use only existing tag ids), assigned to all items:
+				// options 'b', 'c' add them to the tags of the column, option 'd' uses only them (required)
+				$conf['tags_ids'] = $conf['tags_col'] && $conf['tags_ids']
+					? $db->setQuery('SELECT id FROM #__flexicontent_tags WHERE id IN (' . implode(',', $conf['tags_ids']) . ')')->loadColumn()
+					: array();
+
+				if ($conf['tags_col'] == 3 && !$conf['tags_ids'])
+				{
+					$app->enqueueMessage('Please select the tags to assign to all imported items (Tags TAB)', 'error');
+					$app->redirect($link);
+				}
+
 				// ***
 				// *** Verify that custom specified item ids do not already exist
 				// ***
@@ -627,6 +640,12 @@ class FlexicontentControllerImport extends FlexicontentControllerBaseAdmin
 
 				foreach ($conf['columns'] as $colname)
 				{
+					// Tag columns are known columns, they are used or ignored according to the Tags option (e.g. ignored for option 'd')
+					if ($colname === 'tags_names' || $colname === 'tags_raw')
+					{
+						continue;
+					}
+
 					if (!isset($conf['core_props'][$colname]) && !isset($conf['custom_fields'][$colname]) && !isset($conf['attribs'][$colname]) && !isset($conf['metadata'][$colname]))
 					{
 						$unused_columns[] = $colname;
@@ -898,6 +917,16 @@ class FlexicontentControllerImport extends FlexicontentControllerBaseAdmin
 				}
 
 				$data['vstate']  = 2;
+
+				// Tags selected in the import form, assigned to all items
+				if ($conf['tags_col'] == 3)
+				{
+					$data['tag'] = $conf['tags_ids'];
+				}
+				elseif ($conf['tags_ids'])
+				{
+					$data['tag'] = array_values(array_unique(array_merge(isset($data['tag']) ? (array) $data['tag'] : array(), $conf['tags_ids'])));
+				}
 
 				if (!$data['id'])
 				{
@@ -1215,10 +1244,25 @@ class FlexicontentControllerImport extends FlexicontentControllerBaseAdmin
 						}
 
 						$filename = '';
+						$filename_tags = '';
 
 						if (!isset($prop_arr))
 						{
 							$filename = $val;
+
+							// Importable CSV export format, e.g. file.webp{Alt}...{/Alt} or file.zip{Altname}...{/Altname}{Desc}...{/Desc}
+							// External files {URL}...{/URL} or http(s):// / ftp:// URLs have no file on the server, skip checking them
+							if (preg_match('#^\{URL\}#', $filename) || preg_match('#^(?:https?|ftp)://#i', $filename))
+							{
+								$filename = '';
+							}
+
+							// Check only the filename, keeping the property tags to be added back to the value
+							elseif (preg_match('#^(.*?)(\{[A-Za-z][A-Za-z0-9]*\}.*)$#s', $filename, $matches))
+							{
+								$filename      = trim($matches[1]);
+								$filename_tags = $matches[2];
+							}
 						}
 						else
 						{
@@ -1246,7 +1290,7 @@ class FlexicontentControllerImport extends FlexicontentControllerBaseAdmin
 								// Update value in-place within the multi-value array instead of overwriting the entire cell
 								if (!isset($prop_arr))
 								{
-									$vals[$i] = $_filename;
+									$vals[$i] = $_filename . $filename_tags;
 								}
 								else
 								{
