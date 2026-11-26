@@ -93,11 +93,63 @@ var fc_statehandler = function(options)
 		{
 			el.fcSlide = null;
 			el.style.overflow = '';
+			el.style.overflowY = el.dataset.fcOverflow || '';
 			if (!show)
 			{
 				el.style.display = 'none';
 			}
 		};
+	};
+
+
+	// A scrolling box around the button (e.g. the wide table of a manager) would cut off the drop down list,
+	// in this case it is positioned relative to the window: below the button, or above it if there is more room there
+	var placeSelector = function(toggler, ops)
+	{
+		['position', 'top', 'left', 'margin', 'maxHeight', 'overflowY'].forEach(prop => { ops.style[prop] = ''; });
+		delete ops.dataset.fcOverflow;
+		toggler.fcPlace = null;
+
+		var parent = toggler.parentElement;
+		while (parent && parent !== document.body && parent !== document.documentElement)
+		{
+			var cs = window.getComputedStyle(parent);
+			if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') break;
+			parent = parent.parentElement;
+		}
+		if (!parent || parent === document.body || parent === document.documentElement) return;
+
+		ops.style.display = 'block';
+		ops.style.position = 'fixed';
+		ops.style.margin = '0';
+		ops.style.top = '0px';
+		ops.style.left = '0px';
+
+		var button = toggler.getBoundingClientRect();
+		var view   = document.documentElement;
+		var width  = ops.offsetWidth;
+		var height = ops.offsetHeight;
+		var below  = view.clientHeight - button.bottom - 8;
+		var above  = button.top - 8;
+		var upward = height > below && above > below;
+		var space  = Math.max(upward ? above : below, 0);
+
+		if (height > space)
+		{
+			height = space;
+			ops.style.maxHeight = space + 'px';
+			ops.style.overflowY = ops.dataset.fcOverflow = 'auto';
+		}
+
+		var top  = upward ? button.top - height - 2 : button.bottom + 2;
+		var left = Math.max(8, Math.min(button.left, view.clientWidth - width - 8));
+
+		// The offset is not zero if a transformed parent is the reference box of fixed positioning
+		var origin = ops.getBoundingClientRect();
+		ops.style.top  = (top - origin.top) + 'px';
+		ops.style.left = (left - origin.left) + 'px';
+
+		toggler.fcPlace = {top: button.top, left: button.left};
 	};
 
 
@@ -241,6 +293,7 @@ var fc_statehandler = function(options)
 				});
 			}
 			this.active_selector_box = toggler;
+			placeSelector(toggler, ops);
 		}
 		else
 		{
@@ -272,6 +325,20 @@ var fc_statehandler = function(options)
 
 
 var fc_statehandler_singleton = false;
+
+// A drop down list positioned relative to the window does not follow its button: close it when the button moves
+var fc_state_close_moved = function()
+{
+	var box = fc_statehandler_singleton && fc_statehandler_singleton.active_selector_box;
+	if (!box || !box.fcPlace) return;
+	var rect = box.getBoundingClientRect();
+	if (Math.abs(rect.top - box.fcPlace.top) > 1 || Math.abs(rect.left - box.fcPlace.left) > 1)
+	{
+		fc_statehandler_singleton.toggleSelector(box);
+	}
+};
+document.addEventListener('scroll', fc_state_close_moved, true);
+window.addEventListener('resize', fc_state_close_moved);
 
 document.addEventListener('mouseup', function(event)
 {
